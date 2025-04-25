@@ -1,0 +1,25 @@
+/* static/css/styles.css */
+body {
+    background: #f5f7fa;
+    font-family: 'Poppins', sans-serif;
+}
+
+.card {
+    border-radius: 1rem;
+}
+
+.btn-primary, .btn-success, .btn-danger, .btn-warning {
+    border-radius: 2rem;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+h2 {
+    font-weight: 600;
+}
+
+.alert code {
+    font-size: 1rem;
+}
