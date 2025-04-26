@@ -47,21 +47,21 @@ class Customer(db.Model):
 # ====== Load Model and Preprocessors ======
 
 try:
-    model = load_model('models/credit_fraud_cnn_model.h5', compile=False)
+    model = load_model('models/credit_fraud_cnn_model_resampled.h5', compile=False)
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 except Exception as e:
     print(f"Error loading model: {e}")
     exit(1)
 
 try:
-    with open('models/scaler.pkl', 'rb') as f:
+    with open('models/scaler_resampled.pkl', 'rb') as f:
         scaler = pickle.load(f)
 except Exception as e:
     print(f"Error loading scaler: {e}")
     exit(1)
 
 try:
-    with open('models/label_encoders.pkl', 'rb') as f:
+    with open('models/label_encoders_resampled.pkl', 'rb') as f:
         label_encoders = pickle.load(f)
 except Exception as e:
     print(f"Error loading label encoders: {e}")
@@ -115,7 +115,7 @@ def predict():
         X_reshaped = X_scaled.reshape((1, X_scaled.shape[1], 1))
 
         prediction = model.predict(X_reshaped)
-        is_fraud = int(prediction[0][0] > 0.5)
+        is_fraud = int(prediction[0][0] > 0.0001)
 
         # Save to database
         new_customer = Customer(
