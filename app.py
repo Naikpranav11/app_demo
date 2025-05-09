@@ -7,6 +7,10 @@ import pickle
 from datetime import datetime, timedelta
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+import random
+import string
+from xgboost import XGBClassifier
+import shap
 
 # Initialize app
 app = Flask(__name__)
@@ -29,15 +33,17 @@ class Customer(db.Model):
     first = db.Column(db.String(100))
     last = db.Column(db.String(100))
     gender = db.Column(db.String(10))
-    street = db.Column(db.String(200))
+    job = db.Column(db.String(100))
+    category = db.Column(db.String(100))
+    # street = db.Column(db.String(200))
     city = db.Column(db.String(100))
     state = db.Column(db.String(100))
     zip = db.Column(db.String(20))
-    lat = db.Column(db.Float)
-    long = db.Column(db.Float)
-    unix_time = db.Column(db.Float)
-    trans_hour = db.Column(db.Integer)
-    trans_day = db.Column(db.Integer)
+    # lat = db.Column(db.Float)
+    # long = db.Column(db.Float)
+    # unix_time = db.Column(db.Float)
+    # trans_hour = db.Column(db.Integer)
+    # trans_day = db.Column(db.Integer)
     age = db.Column(db.Integer)
     amt = db.Column(db.Float)
     is_fraud = db.Column(db.Boolean)
@@ -47,30 +53,49 @@ class Customer(db.Model):
 # ====== Load Model and Preprocessors ======
 
 try:
-    model = load_model('models/credit_fraud_cnn_model_resampled.h5', compile=False)
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    cnn_model = load_model('new_models/credit_fraud_cnn_model_resampled_new.h5', compile=False)
+    cnn_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 except Exception as e:
     print(f"Error loading model: {e}")
     exit(1)
 
 try:
-    with open('models/scaler_resampled.pkl', 'rb') as f:
+    with open('new_models/scaler_resampled_new.pkl', 'rb') as f:
         scaler = pickle.load(f)
 except Exception as e:
     print(f"Error loading scaler: {e}")
     exit(1)
 
 try:
-    with open('models/label_encoders_resampled.pkl', 'rb') as f:
+    with open('new_models/label_encoders_resampled_new.pkl', 'rb') as f:
         label_encoders = pickle.load(f)
 except Exception as e:
     print(f"Error loading label encoders: {e}")
     exit(1)
+    
+try:
+    xgb_model = XGBClassifier()
+    xgb_model.load_model('new_models/credit_fraud_xgboost_model.json')
+except Exception as e:
+    print(f"Error loading XGBoost model: {e}")
+    exit(1)
 
-feature_columns = [
-    'cc_num', 'amt', 'first', 'last', 'gender', 'street', 'city', 'state',
-    'zip', 'lat', 'long', 'unix_time', 'trans_hour', 'trans_day', 'age'
-]
+# Load scaler and label encoders
+# Load XGBoost scaler and encoders
+try:
+    with open('new_models/scaler_xgboost.pkl', 'rb') as f:
+        scaler_xgb = pickle.load(f)
+    with open('new_models/label_encoders_xgboost.pkl', 'rb') as f:
+        encoders_xgb = pickle.load(f)
+except Exception as e:
+    print(f"Error loading XGBoost preprocessors: {e}")
+    exit(1)
+
+print("All models and tools loaded successfully!")
+
+print("All models and tools loaded successfully!")
+
+
 
 # ========== Customer Routes ==========
 
@@ -78,73 +103,190 @@ feature_columns = [
 def index():
     return redirect('/admin/login')
 
+def preprocess_input(features, encoders, scaler):
+    df = pd.DataFrame([features])
+    print("Preprocessing input:", df)
+    categorical_columns = ['first', 'last', 'gender', 'city', 'state', 'job', 'category']
+    for col in categorical_columns:
+        le = encoders[col]
+        if df[col].iloc[0] in le.classes_:
+            df[col] = le.transform([df[col].iloc[0]])[0]
+        else:
+            df[col] = -1
+    ordered_cols = ['first', 'last', 'cc_num', 'amt', 'gender', 'city', 'state', 'zip', 'job', 'category', 'age']
+    df = df[ordered_cols]
+    return scaler.transform(df)
+
+# def preprocess_input(features, encoders, scaler):
+#     df = pd.DataFrame([features])
+#     print("Preprocessing input:", df)
+
+#     categorical_columns = ['first', 'last', 'gender', 'city', 'state', 'job', 'category']
+#     for col in categorical_columns:
+#         le = encoders[col]
+#         if df[col].iloc[0] in le.classes_:
+#             df[col] = le.transform([df[col].iloc[0]])[0]
+#         else:
+#             df[col] = -1
+
+#     # Make sure cc_num is float (after encoding other columns)
+#     df['cc_num'] = df['cc_num'].astype(float)
+
+#     ordered_cols = ['first', 'last', 'cc_num', 'amt', 'gender', 'city', 'state', 'zip', 'job', 'category', 'age']
+#     df = df[ordered_cols]
+
+#     return scaler.transform(df)
+
 @app.route('/submit_transaction', methods=['POST'])
 def predict():
     try:
+        # cc_num_raw_str = request.form['cc_num']  # keep original for fraud checks + masking
         input_data = {
             'cc_num': float(request.form['cc_num']),
             'amt': float(request.form['amt']),
             'first': request.form['first'],
             'last': request.form['last'],
             'gender': request.form['gender'],
-            'street': request.form['street'],
             'city': request.form['city'],
             'state': request.form['state'],
             'zip': float(request.form['zip']),
-            'lat': float(request.form['lat']),
-            'long': float(request.form['long']),
-            'unix_time': float(request.form['unix_time']),
-            'trans_hour': float(request.form['trans_hour']),
-            'trans_day': float(request.form['trans_day']),
+            'job': request.form['job'],
+            'category': request.form['category'],
             'age': float(request.form['age'])
         }
+        
+                # Convert credit card number to string for checks
+        
+        # === Extra Checks ===
+        
+        # # 1️⃣ Check: Age below 18
+        # if input_data['age'] < 18:
+        #     avg_score = 0.99
+        #     is_fraud = 1
+        #     status = 'Rejected (Underage)'
+        
+        # # 2️⃣ Check: Credit card number less than 16 digits
+        # elif len(cc_num_raw_str) < 16:
+        #     avg_score = 0.99
+        #     is_fraud = 1
+        #     status = 'Rejected (Invalid CC Number Length)'
+        
+        # # 3️⃣ Check: All digits same (like 1111111111111111)
+        # elif len(set(cc_num_raw_str)) == 1:
+        #     avg_score = 0.99
+        #     is_fraud = 1
+        #     status = 'Rejected (Invalid CC Number Pattern)'
+        
+        # # 4️⃣ Check: Starts with sequential digits (like 1234, 2345 etc.)
+        # elif cc_num_raw_str.startswith(('1234', '2345', '3456', '4567', '5678', '6789', '7890')):
+        #     avg_score = 0.99
+        #     is_fraud = 1
+        #     status = 'Rejected (Sequential Digits Detected)'
+        
+        # # 5️⃣ Check: Starts with repeated pattern like '1111', '2222', etc.
+        # elif any(cc_num_raw_str.startswith(d * 4) for d in '0123456789'):
+        #     avg_score = 0.99
+        #     is_fraud = 1
+        #     status = 'Rejected (Repeated Pattern Detected)'
+            
+        
+        # input_data_for_model['cc_num'] = float(input_data_for_model['cc_num'])  # safe for model
+        # === Preprocess for CNN ===
+        X_cnn_scaled = preprocess_input(input_data, label_encoders, scaler)
+        X_cnn_input = X_cnn_scaled.reshape((X_cnn_scaled.shape[0], X_cnn_scaled.shape[1], 1))
+        cnn_score = cnn_model.predict(X_cnn_input).flatten()[0]
 
-        df_input = pd.DataFrame([input_data])
+        # === Preprocess for XGBoost ===
+        X_xgb_scaled = preprocess_input(input_data, encoders_xgb, scaler_xgb)
+        xgb_score = xgb_model.predict_proba(X_xgb_scaled)[0][1]
 
-        # Encode categoricals
-        categorical_columns = ['first', 'last', 'gender', 'street', 'city', 'state']
-        for column in categorical_columns:
-            if column in label_encoders:
-                try:
-                    df_input[column] = label_encoders[column].transform([df_input[column].iloc[0]])[0]
-                except ValueError:
-                    df_input[column] = 0
+        # === Average Prediction ===
+        if cnn_score < 0.1:
+            cnn_score = cnn_score + 0.60
+            avg_score = (cnn_score + (xgb_score * 1.1)) / 2
+            is_fraud = int(avg_score > 0.49)
+            print(f"CNN Score: {cnn_score}")
+            print(f"XGBoost Score: {xgb_score}")
+            print(f"Average Score: {avg_score}")
+        
+        else:
+            avg_score = (cnn_score + (xgb_score * 1.1)) / 2
+            is_fraud = int(avg_score > 0.49)
+            print(f"CNN Score: {cnn_score}")
+            print(f"XGBoost Score: {xgb_score}")
+            print(f"Average Score: {avg_score}")
 
-        X = df_input[feature_columns].values
-        X_scaled = scaler.transform(X)
-        X_reshaped = X_scaled.reshape((1, X_scaled.shape[1], 1))
 
-        prediction = model.predict(X_reshaped)
-        is_fraud = int(prediction[0][0] > 0.0001)
+        # Decide Status
+        if is_fraud:
+            if input_data['amt'] < 200 and avg_score > 0.5 and avg_score < 0.8:
+                status = 'Under Review'
+                
+            else:
+                status = 'Rejected'
 
+        else:
+            status = 'Accepted'
+                
         # Save to database
         new_customer = Customer(
             first=input_data['first'],
             last=input_data['last'],
             gender=input_data['gender'],
-            street=input_data['street'],
             city=input_data['city'],
             state=input_data['state'],
             zip=str(int(input_data['zip'])),
-            lat=input_data['lat'],
-            long=input_data['long'],
-            unix_time=input_data['unix_time'],
-            trans_hour=int(input_data['trans_hour']),
-            trans_day=int(input_data['trans_day']),
             age=int(input_data['age']),
+            job = str(input_data['job']),
+            category = str(input_data['category']),
             amt=input_data['amt'],
             is_fraud=bool(is_fraud)
-        )
+            )
         db.session.add(new_customer)
         db.session.commit()
 
-        # Decide Status
-        if is_fraud:
-            status = 'Rejected'
-        else:
-            status = 'Accepted'
 
-        return render_template('result.html', status=status)
+        transaction_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+        # Create Customer Name
+        customer_name = f"{input_data['first']} {input_data['last']}"
+
+        # Mask Credit Card Number
+        cc_num_raw_str = str(int(input_data['cc_num']))  # Convert cc_num float to string
+        cc_num_masked = "**** **** **** " + cc_num_raw_str[-4:]
+        
+                # === SHAP explanation ===
+        ordered_cols = ['first', 'last', 'cc_num', 'amt', 'gender', 'city', 'state', 'zip', 'job', 'category', 'age']
+
+        explainer = shap.Explainer(xgb_model)
+        df_encoded = pd.DataFrame([input_data])
+
+        for col in ['first', 'last', 'gender', 'city', 'state', 'job', 'category']:
+            le = encoders_xgb[col]
+            if df_encoded[col].iloc[0] in le.classes_:
+                df_encoded[col] = le.transform([df_encoded[col].iloc[0]])[0]
+            else:
+                df_encoded[col] = -1
+
+        df_encoded = df_encoded[ordered_cols]
+        shap_values = explainer(df_encoded)
+        shap_vals_row = shap_values[0].values
+        feature_names = df_encoded.columns
+        shap_impact = [(feature_names[i], shap_vals_row[i]) for i in range(len(feature_names))]
+        top2 = sorted(shap_impact, key=lambda x: abs(x[1]), reverse=True)[:2]
+
+        top_features = [{'feature': name, 'impact': float(round(val, 4))} for name, val in top2]
+
+        # Now send all these to result.html
+        return render_template(
+            'result.html',
+            status=status,
+            transaction_id=transaction_id,
+            customer_name=customer_name,
+            cc_num_masked=cc_num_masked,
+            avg_score= max(cnn_score, xgb_score),
+            top_features = top_features
+    )
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400

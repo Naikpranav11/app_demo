@@ -5,6 +5,74 @@
     <meta charset="UTF-8">
     <title>Transaction Result</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url('/static/image/3-Credit-Card-Fraud-Detection.png') no-repeat center center;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .transaction-card {
+            max-width: 500px;
+            margin: auto;
+        }
+        .badge-status {
+            font-size: 1rem;
+            padding: 0.6em 1em;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container p-5 text-center">
+    <div class="card shadow p-4 transaction-card">
+        <h2 class="mb-4">Transaction Summary</h2>
+
+        <div class="mb-3">
+            <h5><strong>Transaction ID:</strong> {{ transaction_id }}</h5>
+        </div>
+
+        <div class="mb-3">
+            <h5><strong>Customer Name:</strong> {{ customer_name }}</h5>
+        </div>
+
+        <div class="mb-3">
+            <h5><strong>Credit Card:</strong> {{ cc_num_masked }}</h5>
+        </div>
+        <div class="mb-3">
+            <h5><strong>Score</strong> {{ avg_score }}</h5>
+        </div>
+
+        <div class="mb-3">
+            {% for item in top_features %}
+            <li>{{ item.feature }} (Impact: {{ item.impact }})</li>
+            {% endfor %}
+        <div class="mb-3">
+            <span class="badge bg-{{ 
+                'success' if status == 'Accepted' else 
+                'warning' if status == 'Under Review' else 
+                'danger' 
+            }} badge-status">
+                {{ status }}
+            </span>
+        </div>
+
+        <div class="mt-4">
+            <a href="/" class="btn btn-primary">New Transaction</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+<!-- templates/result.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transaction Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 <div class="container p-5 text-center">
@@ -19,4 +87,4 @@
     </div>
 </div>
 </body>
-</html>
+</html> -->

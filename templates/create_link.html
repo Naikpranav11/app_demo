@@ -1,4 +1,134 @@
-<!-- templates/create_link.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Payment Link</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url('/static/image/3-Credit-Card-Fraud-Detection.png') no-repeat center center;
+            background-size: cover;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.3;
+            z-index: -1;
+        }
+
+        .card {
+            border-radius: 12px;
+            padding: 2rem;
+            background-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .card button {
+            background-color: #3498db;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+        }
+
+        .card button:hover {
+            background-color: #2980b9;
+        }
+
+        .alert {
+            font-size: 1.1rem;
+        }
+
+        .mt-4 {
+            margin-top: 2rem;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            text-decoration: none;
+        }
+
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .form-group input {
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container d-flex justify-content-center align-items-center p-5" style="min-height: 100vh;">
+    <div class="card shadow p-4" style="max-width: 500px; width: 100%;">
+        <h2 class="mb-4">Generate Customer Payment Link</h2>
+
+        <!-- Always show the link card -->
+        <div class="alert alert-success" role="alert">
+            {% if link and link|length > 0 %}
+                Customer Form Link:<br>
+                <a href="{{ link }}" target="_blank">{{ link }}</a>
+            {% else %}
+                No link generated yet.
+            {% endif %}
+        </div>
+
+        <!-- Always show the email form -->
+        <form method="POST" class="mt-4">
+            <div class="form-group">
+                <label for="email">Enter Customer's Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="Enter email address" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg mt-4">Send Link</button>
+        </form>
+
+        <div class="mt-4">
+            <a href="/admin/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
+
+
+
+<!-- templates/create_link.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,12 +153,12 @@
             </form>
         {% endif %}
 
-        <!-- 🧿 Add Back to Dashboard Button -->
-        <div class="mt-4">
+        🧿 Add Back to Dashboard Button -->
+        <!-- <div class="mt-4">
             <a href="/admin/dashboard" class="btn btn-secondary">Back to Dashboard</a>
         </div>
     </div>
 </div>
 
 </body>
-</html>
+</html> --> 
