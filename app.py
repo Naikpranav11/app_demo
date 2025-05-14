@@ -11,10 +11,21 @@ import random
 import string
 from xgboost import XGBClassifier
 import shap
+from flask_mail import Mail, Message
+import random
 
 # Initialize app
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
+
+# 2FA setup
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = ''  # use a test email
+app.config['MAIL_PASSWORD'] = '' #use the app password
+mail = Mail(app)  # ✅ This is the important part
+
 
 # Database setup
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
@@ -155,7 +166,7 @@ def predict():
             'age': float(request.form['age'])
         }
         
-                # Convert credit card number to string for checks
+        # Convert credit card number to string for checks
         
         # === Extra Checks ===
         
@@ -313,6 +324,24 @@ def admin_register():
 
     return render_template('admin_register.html')
 
+# @app.route('/admin/login', methods=['GET', 'POST'])
+# def admin_login():
+#     if request.method == 'POST':
+#         email = request.form['email']
+#         password = request.form['password']
+
+#         admin = Admin.query.filter_by(email=email, password=password).first()
+#         if not admin:
+#             flash('Invalid credentials.', 'danger')
+#             return redirect(url_for('admin_login'))
+
+#         session['admin'] = admin.email
+#         flash('Logged in successfully.', 'success')
+#         return redirect(url_for('admin_dashboard'))
+
+#     return render_template('admin_login.html')
+
+# admin login with 2fa
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
@@ -324,11 +353,36 @@ def admin_login():
             flash('Invalid credentials.', 'danger')
             return redirect(url_for('admin_login'))
 
-        session['admin'] = admin.email
-        flash('Logged in successfully.', 'success')
-        return redirect(url_for('admin_dashboard'))
+        # Generate 2FA code
+        code = random.randint(100000, 999999)
+        session['2fa_code'] = str(code)
+        session['admin_temp'] = email  # temporarily store admin email
+
+        # Send the code to email
+        msg = Message('Your 2FA Code', sender='your_email@gmail.com', recipients=[email])
+        msg.body = f'Your 2FA code is: {code}'
+        mail.send(msg)
+
+        flash('A verification code has been sent to your email.', 'info')
+        return redirect(url_for('admin_2fa'))
 
     return render_template('admin_login.html')
+
+
+@app.route('/admin/2fa', methods=['GET', 'POST'])
+def admin_2fa():
+    if request.method == 'POST':
+        input_code = request.form['code']
+        if input_code == session.get('2fa_code'):
+            session['admin'] = session.pop('admin_temp')  # login finalized
+            session.pop('2fa_code', None)
+            flash('2FA verified. Logged in successfully.', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid 2FA code.', 'danger')
+            return redirect(url_for('admin_2fa'))
+
+    return render_template('admin_2fa.html')
 
 @app.route('/admin/dashboard')
 def admin_dashboard():
