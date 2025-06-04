@@ -1,0 +1,3 @@
+timestamp,first,last,gender,city,state,zip,age,job,category,amt,cc_num,is_fraud
+2025-06-04 12:10:17,omar,hamid,M,Keller,TX,76248,56,probation_officer,grocery_pos,432.0,7638553244152671,1
+2025-06-04 12:15:13,omar,hamid,M,Keller,TX,76248,56,probation_officer,grocery_pos,432.0,7638553244152671,1

@@ -221,7 +221,7 @@ def predict():
             print(f"Average Score: {avg_score}")
         
         else:
-            avg_score = (cnn_score + (xgb_score * 1.1)) / 2
+            avg_score = (cnn_score + xgb_score) / 2
             is_fraud = int(avg_score > 0.49)
             print(f"CNN Score: {cnn_score}")
             print(f"XGBoost Score: {xgb_score}")
@@ -287,6 +287,32 @@ def predict():
         top2 = sorted(shap_impact, key=lambda x: abs(x[1]), reverse=True)[:2]
 
         top_features = [{'feature': name, 'impact': float(round(val, 4))} for name, val in top2]
+
+        save_dict = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'first': input_data['first'],
+            'last': input_data['last'],
+            'gender': input_data['gender'],
+            'city': input_data['city'],
+            'state': input_data['state'],
+            'zip': int(input_data['zip']),
+            'age': int(input_data['age']),
+            'job': input_data['job'],
+            'category': input_data['category'],
+            'amt': input_data['amt'],
+            'cc_num': int(input_data['cc_num']),
+            'is_fraud': is_fraud
+        }
+
+        df_new = pd.DataFrame([save_dict])
+
+        csv_path = os.path.join('data', 'new_labeled_data.csv')
+        os.makedirs('data', exist_ok=True)
+
+        if os.path.exists(csv_path):
+            df_new.to_csv(csv_path, mode='a', header=False, index=False)
+        else:
+            df_new.to_csv(csv_path, mode='w', header=True, index=False)
 
         # Now send all these to result.html
         return render_template(
