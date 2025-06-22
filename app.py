@@ -189,7 +189,7 @@ def predict():
         #     status = 'Rejected (Invalid CC Number Pattern)'
         
         # # 4️⃣ Check: Starts with sequential digits (like 1234, 2345 etc.)
-        # elif cc_num_raw_str.startswith(('1234', '2345', '3456', '4567', '5678', '6789', '7890')):
+        # elif cc_num_raw_str.startswith(('1234', '2345', '3456', '4567', '5678', '6789', '7890')):N
         #     avg_score = 0.99
         #     is_fraud = 1
         #     status = 'Rejected (Sequential Digits Detected)'
@@ -212,13 +212,32 @@ def predict():
         xgb_score = xgb_model.predict_proba(X_xgb_scaled)[0][1]
 
         # === Average Prediction ===
-        if cnn_score < 0.1:
-            cnn_score = cnn_score + 0.60
-            avg_score = (cnn_score + (xgb_score * 1.1)) / 2
-            is_fraud = int(avg_score > 0.49)
-            print(f"CNN Score: {cnn_score}")
-            print(f"XGBoost Score: {xgb_score}")
-            print(f"Average Score: {avg_score}")
+        if cnn_score < 0.1 or xgb_score < 0.1:
+            if cnn_score and xgb_score < 0.1:
+                cnn_score = cnn_score + 0.60
+                xgb_score = xgb_score + 0.60
+                avg_score = (cnn_score + (xgb_score * 1.1)) / 2
+                is_fraud = int(avg_score > 0.49)
+                print(f"CNN 1 Score: {cnn_score}")
+                print(f"XGBoost 1 Score: {xgb_score}")
+                print(f"Average 1 Score: {avg_score}")
+            
+            elif cnn_score < 0.1:
+                cnn_score = cnn_score + 0.60
+                avg_score = (cnn_score + (xgb_score * 1.1)) / 2
+                is_fraud = int(avg_score > 0.49)
+                print(f"CNN 2 Score: {cnn_score}")
+                print(f"XGBoost 2 Score: {xgb_score}")
+                print(f"Average 2 Score: {avg_score}")
+                
+            else:
+                xgb_score = xgb_score + 0.60
+                avg_score = (xgb_score + (cnn_score * 1.1)) / 2
+                is_fraud = int(avg_score > 0.49)
+                print(f"CNN 3 Score: {cnn_score}")
+                print(f"XGBoost 3 Score: {xgb_score}")
+                print(f"Average 3 Score: {avg_score}")
+        
         
         else:
             avg_score = (cnn_score + xgb_score) / 2
@@ -230,7 +249,7 @@ def predict():
 
         # Decide Status
         if is_fraud:
-            if input_data['amt'] < 200 and avg_score > 0.5 and avg_score < 0.8:
+            if avg_score > 0.5 and avg_score < 0.8:
                 status = 'Under Review'
                 
             else:
